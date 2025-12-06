@@ -3,7 +3,7 @@ The purpose of this project is to predict rotten tomatoes markets on the predict
 We believe that we can predict the future rating of a movie based on the ratings that have come in so far.
 We believe we can predict the rating at N days into the market given inputs (days since release, ratings so far), though we are open to multiple estimation methods.
 
-The general structure of this project should have:
+The general structure of this project will have:
 
 1. notebooks with some standard ml libraries imported for doing random forest classification
 2. scraper scripts that grab Rotten Tomatoes web pages
