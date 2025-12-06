@@ -15,59 +15,146 @@
 <body class="bg-yellow-50 text-black font-mono min-h-screen p-8">
     <div class="max-w-7xl mx-auto">
         <!-- Header -->
-        <div class="border-b-4 border-black mb-12 pb-4 flex justify-between items-end">
+        <div class="border-b-4 border-black mb-12 pb-4 flex flex-wrap justify-between items-end gap-4">
             <h1 class="text-5xl font-black uppercase tracking-tighter">RT_Markets<span class="text-red-600">.ai</span></h1>
-            <span class="text-sm font-bold bg-black text-white px-2 py-1">BETA V0.1</span>
+            <div class="flex items-center gap-3">
+                <span class="text-sm font-bold bg-black text-white px-2 py-1">BETA V0.1</span>
+                <a href="/search" class="bg-white border-2 border-black px-3 py-2 font-bold brutal-shadow inline-block">Search Markets</a>
+            </div>
         </div>
 
         <!-- Grid Container -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for market in markets %}
+            {% set yes_book = market.orderbook.get('yes', {}) %}
+            {% set no_book = market.orderbook.get('no', {}) %}
+            {% set yes_bids = yes_book.get('bids', []) %}
+            {% set yes_asks = yes_book.get('asks', []) %}
+            {% set no_bids = no_book.get('bids', []) %}
+            {% set no_asks = no_book.get('asks', []) %}
             <!-- Card -->
             <div class="group bg-white border-4 border-black p-6 transition-all duration-200 ease-out brutal-shadow relative overflow-hidden">
-                
-                <!-- Category Tag -->
-                <div class="absolute top-0 right-0 bg-black text-white text-xs px-3 py-1 uppercase font-bold">
-                    {{ market.category }}
-                </div>
-
-                <!-- Content -->
-                <div class="mt-4 flex flex-col h-full justify-between">
-                    <div>
-                        <h2 class="text-xl font-bold leading-tight mb-2 group-hover:underline decoration-4 decoration-red-500">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1">
+                        <p class="text-xs text-gray-500 font-bold">ID: {{ market.ticker }}</p>
+                        <h2 class="text-xl font-bold leading-tight mt-1 group-hover:underline decoration-4 decoration-red-500">
                             {{ market.title }}
                         </h2>
-                        <div class="text-gray-500 text-xs mb-4">
-                            ID: {{ market.id }}
+                        <div class="text-xs text-gray-500 mt-1 space-x-2">
+                            <span class="bg-black text-white px-2 py-1 font-bold uppercase">{{ market.category }}</span>
+                            <span class="bg-yellow-200 text-black px-2 py-1 font-bold uppercase">{{ market.status }}</span>
                         </div>
                     </div>
+                    <a href="{{ market.link }}" target="_blank" rel="noopener noreferrer"
+                       class="bg-black text-white px-3 py-2 font-bold text-xs brutal-shadow">Trade</a>
+                </div>
 
-                    <!-- Price & Action -->
-                    <div class="border-t-4 border-black pt-4 mt-4 flex items-center justify-between">
-                        <div class="flex flex-col">
-                            <span class="text-xs uppercase text-gray-500 font-bold">Yes Bid</span>
-                            <span class="text-4xl font-black text-green-700">
-                                ${{ "%.2f"|format(market.yes_price) }}
-                            </span>
-                        </div>
-                        
-                        <!-- Hover Reveal Button -->
-                        <a href="https://kalshi.com/markets/{{ market.id }}" target="_blank" rel="noopener noreferrer"
-                           class="bg-black text-white px-4 py-2 font-bold opacity-0 group-hover:opacity-100 transition-opacity inline-block">
-                            BET ->
-                        </a>
+                <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div class="bg-green-100 border border-black p-2">
+                        <p class="text-xs font-bold text-gray-600">YES Bid</p>
+                        <p class="text-2xl font-black text-green-800">
+                            {% if market.yes_bid is not none %}${{ "%.2f"|format(market.yes_bid) }}{% else %}--{% endif %}
+                        </p>
                     </div>
+                    <div class="bg-green-50 border border-black p-2">
+                        <p class="text-xs font-bold text-gray-600">YES Ask</p>
+                        <p class="text-2xl font-black text-green-800">
+                            {% if market.yes_ask is not none %}${{ "%.2f"|format(market.yes_ask) }}{% else %}--{% endif %}
+                        </p>
+                    </div>
+                    <div class="bg-blue-100 border border-black p-2">
+                        <p class="text-xs font-bold text-gray-600">NO Bid</p>
+                        <p class="text-2xl font-black text-blue-800">
+                            {% if market.no_bid is not none %}${{ "%.2f"|format(market.no_bid) }}{% else %}--{% endif %}
+                        </p>
+                    </div>
+                    <div class="bg-blue-50 border border-black p-2">
+                        <p class="text-xs font-bold text-gray-600">NO Ask</p>
+                        <p class="text-2xl font-black text-blue-800">
+                            {% if market.no_ask is not none %}${{ "%.2f"|format(market.no_ask) }}{% else %}--{% endif %}
+                        </p>
+                    </div>
+                </div>
 
-                    <!-- Hidden Stats (Revealed on Hover) -->
-                    <div class="max-h-0 group-hover:max-h-20 transition-all duration-300 overflow-hidden">
-                        <div class="pt-4 text-xs grid grid-cols-2 gap-2">
-                            <div class="bg-gray-100 p-1 border border-black text-center">
-                                <span class="block text-gray-500">STATUS</span>
-                                <span class="font-bold uppercase">{{ market.status }}</span>
+                <div class="mt-4 grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-gray-100 border border-black p-2">
+                        <p class="font-bold text-gray-600 uppercase">Volume (24h)</p>
+                        <p class="font-black text-lg">{{ market.volume or '—' }}</p>
+                    </div>
+                    <div class="bg-gray-100 border border-black p-2">
+                        <p class="font-bold text-gray-600 uppercase">Open Interest</p>
+                        <p class="font-black text-lg">{{ market.open_interest or '—' }}</p>
+                    </div>
+                    <div class="bg-gray-50 border border-black p-2">
+                        <p class="font-bold text-gray-600 uppercase">Series</p>
+                        <p class="font-black">{{ market.series_ticker or '—' }}</p>
+                    </div>
+                    <div class="bg-gray-50 border border-black p-2">
+                        <p class="font-bold text-gray-600 uppercase">Event</p>
+                        <p class="font-black">{{ market.event_ticker or '—' }}</p>
+                    </div>
+                </div>
+
+                <div class="mt-5 border-t-4 border-black pt-3">
+                    <div class="flex justify-between items-center">
+                        <p class="font-black text-lg">Order Book (top {{ market.orderbook_depth }} levels)</p>
+                        <span class="text-xs font-bold text-gray-500">Live yes/no ladders</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mt-2 text-xs">
+                        <div class="bg-green-50 border border-black p-2">
+                            <div class="flex justify-between text-[10px] font-bold uppercase text-gray-600">
+                                <span>Yes Bids</span><span>Price / Size</span>
                             </div>
-                            <div class="bg-gray-100 p-1 border border-black text-center">
-                                <span class="block text-gray-500">VOL</span>
-                                <span class="font-bold">--</span> <!-- Placeholder for volume -->
+                            <div class="space-y-1 mt-1">
+                                {% for level in yes_bids %}
+                                <div class="flex justify-between bg-white border border-black px-2 py-1">
+                                    <span>${{ "%.2f"|format(level.price) if level.price is not none else '--' }}</span>
+                                    <span>{{ level.size or '—' }}</span>
+                                </div>
+                                {% else %}
+                                <div class="text-gray-400">No bids</div>
+                                {% endfor %}
+                            </div>
+                            <div class="flex justify-between text-[10px] font-bold uppercase text-gray-600 mt-2">
+                                <span>Yes Asks</span><span>Price / Size</span>
+                            </div>
+                            <div class="space-y-1 mt-1">
+                                {% for level in yes_asks %}
+                                <div class="flex justify-between bg-white border border-black px-2 py-1">
+                                    <span>${{ "%.2f"|format(level.price) if level.price is not none else '--' }}</span>
+                                    <span>{{ level.size or '—' }}</span>
+                                </div>
+                                {% else %}
+                                <div class="text-gray-400">No asks</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 border border-black p-2">
+                            <div class="flex justify-between text-[10px] font-bold uppercase text-gray-600">
+                                <span>No Bids</span><span>Price / Size</span>
+                            </div>
+                            <div class="space-y-1 mt-1">
+                                {% for level in no_bids %}
+                                <div class="flex justify-between bg-white border border-black px-2 py-1">
+                                    <span>${{ "%.2f"|format(level.price) if level.price is not none else '--' }}</span>
+                                    <span>{{ level.size or '—' }}</span>
+                                </div>
+                                {% else %}
+                                <div class="text-gray-400">No bids</div>
+                                {% endfor %}
+                            </div>
+                            <div class="flex justify-between text-[10px] font-bold uppercase text-gray-600 mt-2">
+                                <span>No Asks</span><span>Price / Size</span>
+                            </div>
+                            <div class="space-y-1 mt-1">
+                                {% for level in no_asks %}
+                                <div class="flex justify-between bg-white border border-black px-2 py-1">
+                                    <span>${{ "%.2f"|format(level.price) if level.price is not none else '--' }}</span>
+                                    <span>{{ level.size or '—' }}</span>
+                                </div>
+                                {% else %}
+                                <div class="text-gray-400">No asks</div>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>
