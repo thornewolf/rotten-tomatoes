@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict, List
 
-from core.security import is_auth_configured, kalshi_request
+from core.security import kalshi_request
 
 logger = logging.getLogger(__name__)
 
@@ -12,10 +12,6 @@ def fetch_markets_from_kalshi() -> List[Dict[str, Any]]:
     Falls back to mock data if API is not available or not configured.
     """
     try:
-        if not is_auth_configured():
-            logger.warning("Kalshi authentication not configured, using mock data")
-            return get_mock_markets()
-
         response = kalshi_request("GET", "/markets?status=open&limit=50", timeout=10)
 
         if response.status_code == 200:

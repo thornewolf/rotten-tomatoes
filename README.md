@@ -18,63 +18,51 @@ The general structure of this project should have:
 - `.env` at the repo root with the API keys and identifiers:
   ```
   GEMINI_API_KEY=your-gemini-key
-  KALSHI_API_KEY=your-kalshi-api-key
-  KALSHI_PRIVATE_KEY_PATH=tomato.key
   KALSHI_KEY_ID=your-kalshi-key-id
+  KALSHI_PEM_PATH=./kalshi.key           # alias: KALSHI_PRIVATE_KEY_PATH
+  KALSHI_BASE_URL=https://demo-api.kalshi.co  # base host; code appends /trade-api/v2 if missing
+  KALSHI_API_KEY=your-kalshi-api-key     # optional, kept for future use
   ```
   Ask Thorne for the real values; keep this file out of version control.
-- `tomato.key` (Kalshi private key) placed in the repo root. This is referenced by `KALSHI_PRIVATE_KEY_PATH` and stays local only.
+- `kalshi.key` (Kalshi private key) placed in the repo root. This is referenced by `KALSHI_PEM_PATH`/`KALSHI_PRIVATE_KEY_PATH` and stays local only.
 
 I am gonna attach some relevant code from other projects I have built:
 ```
-  # kalshi_api.py
- 
-import os
-from typing import List, Dict, Any
+# kalshi_api.py (simplified quickstart-style public market data)
+
 import logging
-from security.kalshi_signer import kalshi_request, is_auth_configured
+from typing import Any, Dict, List
+
+from core.security import kalshi_request
 
 logger = logging.getLogger(__name__)
 
 
 def fetch_markets_from_kalshi() -> List[Dict[str, Any]]:
-    """
-    Fetch markets from Kalshi API using proper request signing.
-    Falls back to mock data if API is not available or not configured.
-    """
+    """Fetch open markets using the public market-data endpoint."""
     try:
-        if not is_auth_configured():
-            logger.warning("Kalshi authentication not configured, using mock data")
-            return get_mock_markets()
-        
-        # Use the authenticated kalshi_request function
-        response = kalshi_request(
-            "GET", 
-            "/trade-api/v2/markets?status=open&limit=50",
-            timeout=10
-        )
-        
+        response = kalshi_request("GET", "/markets?status=open&limit=50", timeout=10)
+
         if response.status_code == 200:
             data = response.json()
             markets = data.get("markets", [])
-            logger.info(f"Successfully fetched {len(markets)} markets from Kalshi API")
-            
+            logger.info("Fetched %s markets from Kalshi", len(markets))
             return [
                 {
                     "id": market.get("ticker", f"market_{i}"),
                     "title": market.get("title", f"Market {i}"),
                     "category": market.get("category", "General"),
                     "status": market.get("status", "open"),
-                    "yes_price": market.get("yes_bid", 0.5)
+                    "yes_price": market.get("yes_bid", 0.5),
                 }
-                for i, market in enumerate(markets[:20])  # Limit for MVP
+                for i, market in enumerate(markets[:20])
             ]
-        else:
-            logger.warning(f"Kalshi API error: {response.status_code}, using mock data")
-            return get_mock_markets()
-            
-    except Exception as e:
-        logger.error(f"Error fetching from Kalshi API: {e}, using mock data")
+
+        logger.warning("Kalshi API error: %s, using mock data", response.status_code)
+        return get_mock_markets()
+
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Error fetching from Kalshi API: %s, using mock data", exc)
         return get_mock_markets()
 
 
@@ -82,61 +70,19 @@ def get_mock_markets() -> List[Dict[str, Any]]:
     """Mock market data for development and testing."""
     return [
         {
-            "id": "INF-DEC24",
-            "title": "Will US inflation rate exceed 3% in December 2024?",
-            "category": "Economics",
+            "id": "RT-GLADIATOR2",
+            "title": "Rotten Tomatoes: Gladiator 2 > 85%?",
+            "category": "Entertainment",
             "status": "open",
-            "yes_price": 0.65
+            "yes_price": 0.65,
         },
         {
-            "id": "FED-JAN25", 
-            "title": "Will the Federal Reserve raise interest rates in January 2025?",
-            "category": "Economics",
+            "id": "RT-WICKED",
+            "title": "Rotten Tomatoes: Wicked > 90%?",
+            "category": "Entertainment",
             "status": "open",
-            "yes_price": 0.25
+            "yes_price": 0.25,
         },
-        {
-            "id": "TECH-Q1",
-            "title": "Will any major tech stock gain more than 20% in Q1 2025?",
-            "category": "Technology",
-            "status": "open",
-            "yes_price": 0.45
-        },
-        {
-            "id": "WEATHER-JAN",
-            "title": "Will January 2025 be warmer than average in the US?",
-            "category": "Weather",
-            "status": "open", 
-            "yes_price": 0.55
-        },
-        {
-            "id": "ELECTION-LOCAL",
-            "title": "Will turnout exceed 60% in the next major city election?",
-            "category": "Politics",
-            "status": "open",
-            "yes_price": 0.40
-        },
-        {
-            "id": "SPORTS-SUPERBOWL",
-            "title": "Will the Super Bowl 2025 total score exceed 50 points?",
-            "category": "Sports", 
-            "status": "open",
-            "yes_price": 0.70
-        },
-        {
-            "id": "CRYPTO-BTC",
-            "title": "Will Bitcoin reach $100,000 before June 2025?",
-            "category": "Cryptocurrency",
-            "status": "open",
-            "yes_price": 0.35
-        },
-        {
-            "id": "AI-BREAKTHROUGH",
-            "title": "Will a new major AI breakthrough be announced in Q1 2025?",
-            "category": "Technology",
-            "status": "open",
-            "yes_price": 0.60
-        }
     ]
 ```
 ```
