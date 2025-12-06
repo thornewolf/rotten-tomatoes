@@ -5,13 +5,11 @@ import os
 import pprint
 
 import logging
-import concurrent.futures
-
 # Add the project root directory to sys.path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
-from services.kalshi_api import search_market
+from services.kalshi_api import search_markets
 
 def main():
     logging.basicConfig(level=logging.INFO)
@@ -21,17 +19,7 @@ def main():
 
     print(f"Searching for markets matching: {args.market}...")
     
-    results = {}
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future_to_query = {executor.submit(search_market, query): query for query in args.market}
-        for future in concurrent.futures.as_completed(future_to_query):
-            query = future_to_query[future]
-            try:
-                data = future.result()
-                results[query] = data
-            except Exception as exc:
-                logging.error(f"Search for '{query}' generated an exception: {exc}")
-                results[query] = None
+    results = search_markets(args.market)
 
     print("\nSearch Results:")
     for query, result in results.items():
@@ -43,4 +31,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
