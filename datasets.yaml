@@ -1,0 +1,80 @@
+# Dataset Configuration
+# =====================
+# This file defines all available training datasets for the RT prediction model.
+#
+# Each dataset specifies:
+#   - sources: Raw data files and how to process them
+#   - output_path: Where the processed training data is saved
+#   - feature_columns: Features used for training (default: standard 3 features)
+#   - target_column: The prediction target (default: final_score)
+#
+# Data formats:
+#   - "processed": Already in standard format (days_since_release, current_rating, num_reviews, final_score)
+#   - "reviews": Raw review data needing transformation (Review Order, Critic Name, Date Reviewed, Review Sentiment)
+#   - "snapshots": Time-series snapshots (similar to processed but may need filtering)
+#
+# Transformations:
+#   - "review_prefix": Convert review-level data to prefix features
+#     Args: prefix_lengths (list of ints), column_mapping (dict)
+
+datasets:
+  # ===================
+  # Production Datasets
+  # ===================
+
+  tron:
+    description: "Tron movie review data - real RT reviews with sentiment"
+    sources:
+      - path: data/tron-sample.csv
+        format: reviews
+        transform: review_prefix
+        transform_args:
+          prefix_lengths: [3, 5, 10, 20, 30, 40, 50]
+    output_path: data/processed_tron.csv
+    train_test_split: 0.2
+    random_state: 42
+
+  # ==================
+  # Synthetic Datasets
+  # ==================
+
+  dummy:
+    description: "Synthetic data with realistic score convergence patterns"
+    sources:
+      - path: data/processed_dummy.csv
+        format: processed
+    output_path: data/processed_dummy.csv
+    train_test_split: 0.2
+    random_state: 42
+
+  # ====================
+  # Combined / Augmented
+  # ====================
+
+  # Example of combining multiple sources:
+  # combined:
+  #   description: "Combined real + synthetic data for robust training"
+  #   sources:
+  #     - path: data/processed_tron.csv
+  #       format: processed
+  #     - path: data/processed_movie1.csv
+  #       format: processed
+  #     - path: data/processed_movie2.csv
+  #       format: processed
+  #   output_path: data/processed_combined.csv
+
+# =====================
+# Adding New Datasets
+# =====================
+#
+# To add a new dataset:
+#
+# 1. For raw review data (format: reviews):
+#    - Create a CSV with columns: Review Order, Critic Name, Date Reviewed, Review Sentiment
+#    - Add entry with transform: review_prefix
+#
+# 2. For pre-processed data (format: processed):
+#    - Create a CSV with columns: days_since_release, current_rating, num_reviews, final_score
+#    - Add entry with format: processed
+#
+# 3. Run: just train --dataset <name>

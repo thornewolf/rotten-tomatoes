@@ -1,0 +1,31 @@
+{
+  "num_movies": 500,
+  "observations_per_movie": 15,
+  "min_final_score": 5.0,
+  "max_final_score": 98.0,
+  "score_distribution": "uniform",
+  "bimodal_peaks": [
+    25.0,
+    75.0
+  ],
+  "bimodal_std": 15.0,
+  "normal_mean": 60.0,
+  "normal_std": 20.0,
+  "convergence_days": 4.0,
+  "early_score_bias": -8.0,
+  "early_bias_decay_rate": 0.5,
+  "day1_review_fraction": 0.5,
+  "review_accumulation_rate": 0.3,
+  "max_review_days": 10,
+  "min_total_reviews": 20,
+  "max_total_reviews": 400,
+  "min_days_since_release": 0,
+  "max_days_since_release": 14,
+  "score_noise_std": 5.0,
+  "review_count_noise_std": 0.1,
+  "bucket_thresholds": [
+    60.0,
+    90.0
+  ],
+  "seed": 42
+}

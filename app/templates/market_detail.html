@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Detail</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen">
+
+    <nav class="bg-white border-b border-gray-200 px-6 py-4 mb-8">
+        <div class="max-w-5xl mx-auto flex gap-4 text-sm">
+            <a href="/" class="text-gray-500 hover:text-gray-900">&larr; Back to Dashboard</a>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-6">
+
+        {% if error %}
+        <div class="mb-6 p-4 bg-red-50 text-red-700 text-sm border border-red-200 rounded">
+            Error: {{ error }}
+        </div>
+        {% endif %}
+
+        {% if market %}
+        <div class="bg-white border border-gray-200 rounded shadow-sm overflow-hidden">
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-100">
+                <div class="flex justify-between items-start gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="font-mono text-sm bg-gray-100 text-gray-700 px-2 py-0.5 rounded">{{ market.ticker }}</span>
+                            <span class="text-xs uppercase font-bold text-gray-400">{{ market.category }}</span>
+                        </div>
+                        <h1 class="text-2xl font-bold text-gray-900 sm:text-3xl leading-tight">{{ market.title }}</h1>
+                    </div>
+                    <a href="{{ market.link }}" target="_blank" rel="noopener noreferrer"
+                       class="shrink-0 bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors">
+                        View on Kalshi
+                    </a>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x border-b border-gray-100 divide-gray-100">
+                <div class="p-4 text-center md:text-left">
+                    <dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Status</dt>
+                    <dd class="mt-1 text-lg font-semibold text-gray-900 capitalize">{{ market.status }}</dd>
+                </div>
+                <div class="p-4 text-center md:text-left">
+                    <dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Market Implied Score</dt>
+                    <dd class="mt-1 text-lg font-semibold text-gray-900">
+                        {% if market.estimated_score is not none %}
+                            {{ "%.1f"|format(market.estimated_score) }}%
+                        {% else %}
+                            <span class="text-gray-300">--</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div class="p-4 text-center md:text-left">
+                    <dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">24h Volume</dt>
+                    <dd class="mt-1 text-lg font-semibold text-gray-900 font-mono">{{ market.volume or 0 }}</dd>
+                </div>
+                <div class="p-4 text-center md:text-left">
+                    <dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Open Interest</dt>
+                    <dd class="mt-1 text-lg font-semibold text-gray-900 font-mono">{{ market.open_interest or 0 }}</dd>
+                </div>
+            </div>
+
+            <!-- Technical Details -->
+            <div class="p-6 bg-gray-50">
+                <h3 class="text-sm font-bold text-gray-900 mb-4">Metadata</h3>
+                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 text-sm">
+                    <div class="flex justify-between sm:justify-start sm:gap-10 border-b border-gray-200 sm:border-0 pb-2 sm:pb-0">
+                        <dt class="text-gray-500">Series Ticker</dt>
+                        <dd class="font-mono text-gray-900">{{ market.series_ticker or 'N/A' }}</dd>
+                    </div>
+                    <div class="flex justify-between sm:justify-start sm:gap-10 border-b border-gray-200 sm:border-0 pb-2 sm:pb-0">
+                        <dt class="text-gray-500">Event Ticker</dt>
+                        <dd class="font-mono text-gray-900">{{ market.event_ticker or 'N/A' }}</dd>
+                    </div>
+                    <div class="flex justify-between sm:justify-start sm:gap-10 border-b border-gray-200 sm:border-0 pb-2 sm:pb-0">
+                        <dt class="text-gray-500">Close Time</dt>
+                        <dd class="font-mono text-gray-900">{{ market.close_time or 'N/A' }}</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+        {% endif %}
+    </main>
+</body>
+</html>

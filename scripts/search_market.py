@@ -1,15 +1,7 @@
 #!/usr/bin/env python3
 import argparse
-import sys
-import os
-import pprint
-
 import logging
-
-# Add the project root directory to sys.path
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(project_root)
-
+import pprint
 
 from services.kalshi_api import search_markets
 
@@ -34,7 +26,7 @@ def main():
     for query, result in results.items():
         print(f"\n--- Results for '{query}' ---")
         if result:
-            pprint.pprint(result)
+            pprint.pprint(result.model_dump())
         else:
             print("No matching market found.")
 

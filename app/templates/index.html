@@ -2,166 +2,191 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rotten Tomatoes Predictor</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Custom Neo-Brutalist Utilities */
-        .brutal-shadow:hover {
-            box-shadow: 8px 8px 0px 0px #000;
-            transform: translate(-4px, -4px);
-        }
-    </style>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="bg-yellow-50 text-black font-mono min-h-screen p-8">
-    <div class="max-w-7xl mx-auto">
-        <!-- Header -->
-        <div class="border-b-4 border-black mb-12 pb-4 flex flex-wrap justify-between items-end gap-4">
-            <h1 class="text-5xl font-black uppercase tracking-tighter">RT_Markets<span class="text-red-600">.ai</span></h1>
-            <div class="flex items-center gap-3">
-                <span class="text-sm font-bold bg-black text-white px-2 py-1">BETA V0.1</span>
-                <a href="/search" class="bg-white border-2 border-black px-3 py-2 font-bold brutal-shadow inline-block">Search Markets</a>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen">
+
+    <!-- Navigation -->
+    <nav class="bg-white border-b border-gray-200 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <h1 class="text-lg font-semibold tracking-tight">RT Markets Prediction</h1>
+                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Beta v0.1</span>
             </div>
+            <a href="/search" class="text-sm font-medium text-blue-700 hover:underline">Search Markets &rarr;</a>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 py-8">
+
+        <!-- Track Market Section -->
+        <section class="mb-10 max-w-2xl">
+            <h2 class="text-sm font-bold uppercase text-gray-500 mb-2">Track New Market</h2>
+            <form action="/track" method="POST" class="flex gap-2">
+                <div class="flex-1">
+                    <label for="market_input" class="sr-only">Ticker or URL</label>
+                    <input type="text" id="market_input" name="market_input"
+                           placeholder="Enter Ticker (e.g. KXMOVIE) or Kalshi URL"
+                           class="w-full border border-gray-300 px-3 py-2 text-sm rounded focus:ring-2 focus:ring-gray-400 focus:outline-none" required>
+                </div>
+                <button type="submit" class="bg-gray-900 text-white px-4 py-2 text-sm font-medium rounded hover:bg-gray-800">
+                    Track
+                </button>
+            </form>
+
+            {% if request.query_params.get('error') %}
+            <div class="mt-3 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded">
+                {% if request.query_params.get('error') == 'invalid_input' %}
+                    Error: Invalid input. Please enter a valid ticker or URL.
+                {% elif request.query_params.get('error') == 'market_not_found' %}
+                    Error: Market not found for ticker "{{ request.query_params.get('ticker') }}".
+                {% else %}
+                    An error occurred.
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if error %}
+            <div class="mt-3 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded">
+                System Error: {{ error }}
+            </div>
+            {% endif %}
+        </section>
+
+        <div class="flex items-baseline justify-between mb-4 border-b border-gray-200 pb-2">
+            <h2 class="text-xl font-semibold">Tracked Markets</h2>
+            <span class="text-sm text-gray-500">{{ tracked_count }} active</span>
         </div>
 
-        <!-- Grid Container -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Market Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {% for market in markets %}
-            {% set yes_book = market.orderbook.get('yes', {}) %}
-            {% set no_book = market.orderbook.get('no', {}) %}
-            {% set yes_bids = yes_book.get('bids', []) %}
-            {% set yes_asks = yes_book.get('asks', []) %}
-            {% set no_bids = no_book.get('bids', []) %}
-            {% set no_asks = no_book.get('asks', []) %}
-            <!-- Card -->
-            <div class="group bg-white border-4 border-black p-6 transition-all duration-200 ease-out brutal-shadow relative overflow-hidden">
-                <div class="flex items-start justify-between gap-3">
-                    <div class="flex-1">
-                        <p class="text-xs text-gray-500 font-bold">ID: {{ market.ticker }}</p>
-                        <h2 class="text-xl font-bold leading-tight mt-1 group-hover:underline decoration-4 decoration-red-500">
-                            {{ market.title }}
-                        </h2>
-                        <div class="text-xs text-gray-500 mt-1 space-x-2">
-                            <span class="bg-black text-white px-2 py-1 font-bold uppercase">{{ market.category }}</span>
-                            <span class="bg-yellow-200 text-black px-2 py-1 font-bold uppercase">{{ market.status }}</span>
+            <article class="bg-white border border-gray-200 rounded shadow-sm hover:border-gray-300 transition-colors flex flex-col h-full">
+                <!-- Card Header -->
+                <div class="p-5 border-b border-gray-100">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-mono text-xs text-gray-500 bg-gray-50 px-1 py-0.5 rounded">{{ market.ticker }}</span>
+                        <div class="flex gap-2">
+                            {% if market.estimated_score is not none %}
+                            <span class="text-xs font-bold text-gray-900" title="Market Implied Probability">
+                                Implied: {{ "%.1f"|format(market.estimated_score) }}%
+                            </span>
+                            {% endif %}
+                            <span class="text-[10px] uppercase tracking-wider font-semibold text-gray-500 border border-gray-200 px-1.5 py-0.5 rounded">{{ market.status }}</span>
                         </div>
                     </div>
-                    <a href="{{ market.link }}" target="_blank" rel="noopener noreferrer"
-                       class="bg-black text-white px-3 py-2 font-bold text-xs brutal-shadow">Trade</a>
-                </div>
-
-                <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <div class="bg-green-100 border border-black p-2">
-                        <p class="text-xs font-bold text-gray-600">YES Bid</p>
-                        <p class="text-2xl font-black text-green-800">
-                            {% if market.yes_bid is not none %}${{ "%.2f"|format(market.yes_bid) }}{% else %}--{% endif %}
-                        </p>
-                    </div>
-                    <div class="bg-green-50 border border-black p-2">
-                        <p class="text-xs font-bold text-gray-600">YES Ask</p>
-                        <p class="text-2xl font-black text-green-800">
-                            {% if market.yes_ask is not none %}${{ "%.2f"|format(market.yes_ask) }}{% else %}--{% endif %}
-                        </p>
-                    </div>
-                    <div class="bg-blue-100 border border-black p-2">
-                        <p class="text-xs font-bold text-gray-600">NO Bid</p>
-                        <p class="text-2xl font-black text-blue-800">
-                            {% if market.no_bid is not none %}${{ "%.2f"|format(market.no_bid) }}{% else %}--{% endif %}
-                        </p>
-                    </div>
-                    <div class="bg-blue-50 border border-black p-2">
-                        <p class="text-xs font-bold text-gray-600">NO Ask</p>
-                        <p class="text-2xl font-black text-blue-800">
-                            {% if market.no_ask is not none %}${{ "%.2f"|format(market.no_ask) }}{% else %}--{% endif %}
-                        </p>
-                    </div>
-                </div>
-
-                <div class="mt-4 grid grid-cols-2 gap-2 text-xs">
-                    <div class="bg-gray-100 border border-black p-2">
-                        <p class="font-bold text-gray-600 uppercase">Volume (24h)</p>
-                        <p class="font-black text-lg">{{ market.volume or '—' }}</p>
-                    </div>
-                    <div class="bg-gray-100 border border-black p-2">
-                        <p class="font-bold text-gray-600 uppercase">Open Interest</p>
-                        <p class="font-black text-lg">{{ market.open_interest or '—' }}</p>
-                    </div>
-                    <div class="bg-gray-50 border border-black p-2">
-                        <p class="font-bold text-gray-600 uppercase">Series</p>
-                        <p class="font-black">{{ market.series_ticker or '—' }}</p>
-                    </div>
-                    <div class="bg-gray-50 border border-black p-2">
-                        <p class="font-bold text-gray-600 uppercase">Event</p>
-                        <p class="font-black">{{ market.event_ticker or '—' }}</p>
-                    </div>
-                </div>
-
-                <div class="mt-5 border-t-4 border-black pt-3">
-                    <div class="flex justify-between items-center">
-                        <p class="font-black text-lg">Order Book (top {{ market.orderbook_depth }} levels)</p>
-                        <span class="text-xs font-bold text-gray-500">Live yes/no ladders</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 mt-2 text-xs">
-                        <div class="bg-green-50 border border-black p-2">
-                            <div class="flex justify-between text-[10px] font-bold uppercase text-gray-600">
-                                <span>Yes Bids</span><span>Price / Size</span>
-                            </div>
-                            <div class="space-y-1 mt-1">
-                                {% for level in yes_bids %}
-                                <div class="flex justify-between bg-white border border-black px-2 py-1">
-                                    <span>${{ "%.2f"|format(level.price) if level.price is not none else '--' }}</span>
-                                    <span>{{ level.size or '—' }}</span>
-                                </div>
-                                {% else %}
-                                <div class="text-gray-400">No bids</div>
-                                {% endfor %}
-                            </div>
-                            <div class="flex justify-between text-[10px] font-bold uppercase text-gray-600 mt-2">
-                                <span>Yes Asks</span><span>Price / Size</span>
-                            </div>
-                            <div class="space-y-1 mt-1">
-                                {% for level in yes_asks %}
-                                <div class="flex justify-between bg-white border border-black px-2 py-1">
-                                    <span>${{ "%.2f"|format(level.price) if level.price is not none else '--' }}</span>
-                                    <span>{{ level.size or '—' }}</span>
-                                </div>
-                                {% else %}
-                                <div class="text-gray-400">No asks</div>
-                                {% endfor %}
-                            </div>
+                    <h3 class="text-lg font-medium leading-snug text-gray-900">
+                        <a href="/markets/{{ market.ticker }}" class="hover:underline">{{ market.title }}</a>
+                    </h3>
+                    <div class="mt-4 flex gap-4 text-xs text-gray-500">
+                        <div>
+                            <span class="block uppercase text-[10px]">Vol</span>
+                            <span class="font-mono font-medium text-gray-900">{{ market.volume or '0' }}</span>
                         </div>
-                        <div class="bg-blue-50 border border-black p-2">
-                            <div class="flex justify-between text-[10px] font-bold uppercase text-gray-600">
-                                <span>No Bids</span><span>Price / Size</span>
-                            </div>
-                            <div class="space-y-1 mt-1">
-                                {% for level in no_bids %}
-                                <div class="flex justify-between bg-white border border-black px-2 py-1">
-                                    <span>${{ "%.2f"|format(level.price) if level.price is not none else '--' }}</span>
-                                    <span>{{ level.size or '—' }}</span>
-                                </div>
-                                {% else %}
-                                <div class="text-gray-400">No bids</div>
-                                {% endfor %}
-                            </div>
-                            <div class="flex justify-between text-[10px] font-bold uppercase text-gray-600 mt-2">
-                                <span>No Asks</span><span>Price / Size</span>
-                            </div>
-                            <div class="space-y-1 mt-1">
-                                {% for level in no_asks %}
-                                <div class="flex justify-between bg-white border border-black px-2 py-1">
-                                    <span>${{ "%.2f"|format(level.price) if level.price is not none else '--' }}</span>
-                                    <span>{{ level.size or '—' }}</span>
-                                </div>
-                                {% else %}
-                                <div class="text-gray-400">No asks</div>
-                                {% endfor %}
-                            </div>
+                        <div>
+                            <span class="block uppercase text-[10px]">OI</span>
+                            <span class="font-mono font-medium text-gray-900">{{ market.open_interest or '0' }}</span>
                         </div>
                     </div>
                 </div>
+
+                <!-- Action Bar -->
+                <div class="px-5 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center text-sm">
+                    <a href="{{ market.link }}" target="_blank" rel="noopener noreferrer" class="text-blue-700 hover:text-blue-900 font-medium">
+                        Trade on Kalshi &nearr;
+                    </a>
+                    <form action="/untrack/{{ market.ticker }}" method="POST">
+                        <button type="submit" class="text-gray-400 hover:text-red-600 text-xs">Remove</button>
+                    </form>
+                </div>
+
+                <!-- Prediction Widget -->
+                <div class="p-5 flex-1 bg-white" x-data="signalWidget('{{ market.ticker }}')">
+                    <div class="mb-4">
+                        <h4 class="text-xs font-bold uppercase text-gray-500 tracking-wide mb-3">Model Prediction</h4>
+
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <label class="block text-[10px] uppercase text-gray-500 mb-1">Release Days</label>
+                                <input type="number" x-model="days_since_release" placeholder="Default"
+                                       class="w-full text-xs border-gray-300 rounded px-2 py-1.5 bg-gray-50 focus:bg-white focus:ring-1 focus:ring-gray-400 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] uppercase text-gray-500 mb-1">RT Score</label>
+                                <input type="number" step="0.1" max="100" x-model="current_rating" placeholder="Default"
+                                       class="w-full text-xs border-gray-300 rounded px-2 py-1.5 bg-gray-50 focus:bg-white focus:ring-1 focus:ring-gray-400 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] uppercase text-gray-500 mb-1">Review Count</label>
+                                <input type="number" x-model="num_reviews" placeholder="Default"
+                                       class="w-full text-xs border-gray-300 rounded px-2 py-1.5 bg-gray-50 focus:bg-white focus:ring-1 focus:ring-gray-400 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] uppercase text-gray-500 mb-1">Model</label>
+                                <select x-model="model" class="w-full text-xs border-gray-300 rounded px-2 py-1.5 bg-white focus:ring-1 focus:ring-gray-400 focus:outline-none">
+                                    <option value="default">Default</option>
+                                    <option value="tron">Tron</option>
+                                    <option value="dummy">Dummy</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button @click="run" :disabled="loading"
+                                class="w-full py-1.5 text-xs font-medium border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 transition-colors">
+                            <span x-show="!loading">Run Prediction</span>
+                            <span x-show="loading">Analyzing...</span>
+                        </button>
+                    </div>
+
+                    <!-- Results Area -->
+                    <template x-if="error">
+                        <p class="text-xs text-red-600 mt-2" x-text="error"></p>
+                    </template>
+
+                    <template x-if="result">
+                        <div class="mt-4 pt-4 border-t border-dashed border-gray-200">
+                            <div class="flex justify-between items-end mb-2">
+                                <div>
+                                    <span class="block text-[10px] text-gray-500 uppercase">Predicted Score</span>
+                                    <span class="text-2xl font-bold text-gray-900 leading-none">
+                                        <span x-text="result.predicted_final_score"></span><span class="text-sm align-top">%</span>
+                                    </span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="block text-[10px] text-gray-500 uppercase">Confidence</span>
+                                    <span class="text-sm font-medium" x-text="(result.confidence * 100).toFixed(0) + '%'"></span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-green-50 text-green-800 px-2 py-1.5 rounded flex justify-between">
+                                    <span>Fair Yes</span>
+                                    <span class="font-mono font-bold" x-text="'$' + result.fair_yes_price.toFixed(2)"></span>
+                                </div>
+                                <div class="bg-red-50 text-red-800 px-2 py-1.5 rounded flex justify-between">
+                                    <span>Fair No</span>
+                                    <span class="font-mono font-bold" x-text="'$' + result.fair_no_price.toFixed(2)"></span>
+                                </div>
+                            </div>
+
+                            <div class="mt-2 flex justify-between text-[10px] text-gray-500">
+                                <span>Delta: <span x-text="result.delta_to_market !== null ? (result.delta_to_market > 0 ? '+' : '') + result.delta_to_market.toFixed(2) : '--'"></span></span>
+                                <span>Src: <span x-text="result.model_source"></span></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </article>
+            {% else %}
+            <div class="col-span-full py-12 text-center text-gray-500 border border-dashed border-gray-300 rounded">
+                <p>No markets tracked. Add a ticker above to get started.</p>
             </div>
             {% endfor %}
         </div>
-    </div>
+    </main>
+    <script src="/static/js/signal_widget.js"></script>
 </body>
 </html>

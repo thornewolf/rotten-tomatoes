@@ -5,9 +5,13 @@ Maps Kalshi SDK categories to direct HTTP requests using core.security.kalshi_re
 Reference: https://docs.kalshi.com/trade-api/v2
 """
 
+import logging
 from typing import Any, Dict, Optional
 
 from core.security import kalshi_request
+from services.cache import get_events_cache, get_market_cache
+
+logger = logging.getLogger(__name__)
 
 
 # --- Portfolio API ---
@@ -78,8 +82,6 @@ def create_order(
         "expiration_ts": expiration_ts,
         "client_order_id": client_order_id
     }
-    # Filter None values
-    payload = {k: v for k, v in payload.items() if v is not None}
     return kalshi_request("POST", "/portfolio/orders", json=payload).json()
 
 
@@ -105,16 +107,25 @@ def get_fills(
 
 
 # --- Markets API ---
-# Public data about markets, orderbooks, and trades.
 
 def get_markets(
     limit: int = 100,
     cursor: Optional[str] = None,
     status: Optional[str] = "open",
     series_ticker: Optional[str] = None,
-    event_ticker: Optional[str] = None
+    event_ticker: Optional[str] = None,
+    use_cache: bool = True,
 ) -> Dict[str, Any]:
-    """List markets."""
+    """List markets with optional caching."""
+    cache_key = f"markets:{limit}:{cursor}:{status}:{series_ticker}:{event_ticker}"
+
+    if use_cache:
+        cache = get_market_cache()
+        cached = cache.get(cache_key)
+        if cached is not None:
+            logger.debug("Cache hit for markets list")
+            return cached
+
     params = {
         "limit": limit,
         "cursor": cursor,
@@ -122,17 +133,40 @@ def get_markets(
         "series_ticker": series_ticker,
         "event_ticker": event_ticker
     }
-    return kalshi_request("GET", "/markets", params=params).json()
+    result = kalshi_request("GET", "/markets", params=params).json()
+
+    if use_cache:
+        cache = get_market_cache()
+        cache.set(cache_key, result, ttl=60.0)
+
+    return result
 
 
-def get_market(ticker: str) -> Dict[str, Any]:
-    """Get details for a single market."""
-    return kalshi_request("GET", f"/markets/{ticker}").json()
 
 
-def get_market_orderbook(ticker: str, depth: int = 25) -> Dict[str, Any]:
-    """Get the orderbook for a market."""
-    return kalshi_request("GET", f"/markets/{ticker}/orderbook", params={"depth": depth}).json()
+
+def get_market(ticker: str, use_cache: bool = True) -> Dict[str, Any]:
+    """Get details for a single market with optional caching."""
+    cache_key = f"market:{ticker}"
+
+    if use_cache:
+        cache = get_market_cache()
+        cached = cache.get(cache_key)
+        if cached is not None:
+            logger.debug("Cache hit for market %s", ticker)
+            return cached
+
+    result = kalshi_request("GET", f"/markets/{ticker}").json()
+
+    if use_cache:
+        cache = get_market_cache()
+        cache.set(cache_key, result, ttl=30.0)
+
+    return result
+
+
+
+
 
 
 def get_market_candlesticks(
@@ -155,6 +189,9 @@ def get_market_candlesticks(
     return kalshi_request("GET", f"/markets/{ticker}/candlesticks", params=params).json()
 
 
+
+
+
 def get_market_trades(
     ticker: str,
     limit: int = 100,
@@ -165,28 +202,65 @@ def get_market_trades(
     return kalshi_request("GET", f"/markets/{ticker}/trades", params=params).json()
 
 
+
+
+
 # --- Events API ---
+
 # Groups of markets (e.g., "Will result X happen?").
+
+
 
 def get_events(
     limit: int = 100,
     cursor: Optional[str] = None,
     status: Optional[str] = None,
-    series_ticker: Optional[str] = None
+    series_ticker: Optional[str] = None,
+    use_cache: bool = True,
 ) -> Dict[str, Any]:
-    """List events."""
+    """List events with optional caching."""
+    cache_key = f"events:{limit}:{cursor}:{status}:{series_ticker}"
+
+    if use_cache:
+        cache = get_events_cache()
+        cached = cache.get(cache_key)
+        if cached is not None:
+            logger.debug("Cache hit for events list")
+            return cached
+
     params = {
         "limit": limit,
         "cursor": cursor,
         "status": status,
         "series_ticker": series_ticker
     }
-    return kalshi_request("GET", "/events", params=params).json()
+    result = kalshi_request("GET", "/events", params=params).json()
+
+    if use_cache:
+        cache = get_events_cache()
+        cache.set(cache_key, result, ttl=300.0)  # 5 minutes
+
+    return result
 
 
-def get_event(event_ticker: str) -> Dict[str, Any]:
-    """Get a specific event."""
-    return kalshi_request("GET", f"/events/{event_ticker}").json()
+def get_event(event_ticker: str, use_cache: bool = True) -> Dict[str, Any]:
+    """Get a specific event with optional caching."""
+    cache_key = f"event:{event_ticker}"
+
+    if use_cache:
+        cache = get_events_cache()
+        cached = cache.get(cache_key)
+        if cached is not None:
+            logger.debug("Cache hit for event %s", event_ticker)
+            return cached
+
+    result = kalshi_request("GET", f"/events/{event_ticker}").json()
+
+    if use_cache:
+        cache = get_events_cache()
+        cache.set(cache_key, result, ttl=60.0)  # 1 minute
+
+    return result
 
 
 # --- Series API ---

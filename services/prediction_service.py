@@ -1,7 +1,9 @@
 import logging
-import pickle
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from app.schemas import MarketSummary, PredictionResult, SignalResponse, RTContext
+from services.predictors import BasePredictor, DummyPredictor, MLPredictor
 
 logger = logging.getLogger(__name__)
 
@@ -21,36 +23,50 @@ BUCKET_TO_SCORE = {0: 62.0, 1: 78.0, 2: 92.0}
 
 class PredictionEngine:
     """
-    Wrapper around the pickled RandomForest model with graceful fallbacks.
-    If prediction.model is missing at import time we keep serving dummy signals.
+    Orchestrates predictions using the Strategy Pattern.
+    Automatically falls back to DummyPredictor if ML model is unavailable.
     """
 
     def __init__(self, model_path: Path | str = Path("prediction.model")):
         self.model_path = Path(model_path)
-        self.model: Any | None = None
-        self.model_loaded = False
-        self._load_model()
+        self.predictor: BasePredictor = self._initialize_predictor()
 
-    def _load_model(self) -> None:
+    def _initialize_predictor(self) -> BasePredictor:
+        """
+        Try to load ML predictor, fall back to dummy if unavailable.
+        """
         if not self.model_path.exists():
             logger.warning(
-                "Prediction model not found at %s; serving dummy signals instead.",
+                "Prediction model not found at %s; using dummy predictor instead.",
                 self.model_path,
             )
-            return
+            return DummyPredictor()
+
         try:
-            with open(self.model_path, "rb") as f:
-                self.model = pickle.load(f)
-            self.model_loaded = True
-            logger.info("Loaded prediction model from %s", self.model_path)
-        except Exception as exc:  # noqa: BLE001
+            predictor = MLPredictor(self.model_path)
+            logger.info("Loaded ML predictor from %s", self.model_path)
+            return predictor
+        except FileNotFoundError as exc:
             logger.warning(
-                "Failed to load prediction model at %s: %s. Falling back to dummy signals.",
+                "Model file not found at %s: %s. Falling back to dummy predictor.",
                 self.model_path,
                 exc,
             )
-            self.model = None
-            self.model_loaded = False
+            return DummyPredictor()
+        except (OSError, IOError) as exc:
+            logger.warning(
+                "I/O error loading model at %s: %s. Falling back to dummy predictor.",
+                self.model_path,
+                exc,
+            )
+            return DummyPredictor()
+        except (ValueError, TypeError, RuntimeError) as exc:
+            logger.warning(
+                "Invalid model format at %s: %s. Falling back to dummy predictor.",
+                self.model_path,
+                exc,
+            )
+            return DummyPredictor()
 
     def _build_feature_vector(
         self, features: Dict[str, Any]
@@ -68,106 +84,78 @@ class PredictionEngine:
         vector = [normalized[col] for col in FEATURE_COLUMNS]
         return vector, normalized, defaults_used
 
-    def _dummy_probabilities(self, normalized_features: Dict[str, float]) -> Dict[int, float]:
-        current_rating = normalized_features.get(
-            "current_rating", DEFAULT_FEATURE_VALUES["current_rating"]
-        )
-        scaled = max(0.0, min(current_rating / 100.0, 1.0))
 
-        prob_high = min(0.15 + scaled * 0.55, 0.9)
-        prob_mid = min(0.2 + (0.5 - abs(0.5 - scaled)), 0.75)
-        prob_low = max(0.0, 1.0 - prob_high - prob_mid)
+    def predict(self, features: Dict[str, Any]) -> PredictionResult:
+        """
+        Generate a prediction using the configured predictor strategy.
+        """
+        _, normalized_features, defaults_used = self._build_feature_vector(features)
 
-        total = prob_low + prob_mid + prob_high
-        if total <= 0:
-            return {0: 0.34, 1: 0.33, 2: 0.33}
-        return {
-            0: prob_low / total,
-            1: prob_mid / total,
-            2: prob_high / total,
-        }
+        # Try direct score prediction first (for regression models)
+        direct_score = self.predictor.predict_score(normalized_features)
 
-    def _probabilities_from_model(self, vector: list[float]) -> Optional[Dict[int, float]]:
-        if not self.model_loaded or self.model is None:
-            return None
+        if direct_score is not None:
+            # Regression model - use predicted score directly
+            expected_score = direct_score
 
-        try:
-            if hasattr(self.model, "predict_proba"):
-                probs = self.model.predict_proba([vector])[0]
-                classes = getattr(self.model, "classes_", list(range(len(probs))))
-                prob_map: Dict[int, float] = {}
-                for idx, cls in enumerate(classes):
-                    try:
-                        cls_int = int(cls)
-                    except Exception:
-                        continue
-                    prob_map[cls_int] = float(probs[idx])
+            # Derive bucket from score
+            if expected_score < 60:
+                predicted_bucket = 0
+            elif expected_score < 90:
+                predicted_bucket = 1
+            else:
+                predicted_bucket = 2
 
-                total = sum(prob_map.values())
-                if total > 0:
-                    prob_map = {k: v / total for k, v in prob_map.items()}
-                return prob_map
+            # For regressors, confidence is based on how far from bucket boundaries
+            # (closer to boundaries = less confident)
+            bucket_centers = {0: 30, 1: 75, 2: 95}
+            distance_to_center = abs(expected_score - bucket_centers[predicted_bucket])
+            max_distance = 30  # Max distance within a bucket
+            confidence = max(0.5, 1.0 - (distance_to_center / max_distance) * 0.5)
 
-            # Classifiers without predict_proba.
-            pred = self.model.predict([vector])[0]
-            try:
-                label = int(pred)
-            except Exception:
-                label = 1
-            return {label: 1.0}
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Prediction failed; using dummy probabilities: %s", exc)
-            return None
+            prob_map = {predicted_bucket: 1.0}
+        else:
+            # Classification model - use bucket probabilities
+            prob_map = self.predictor.predict_probabilities(normalized_features)
 
-    def predict(self, features: Dict[str, Any]) -> Dict[str, Any]:
-        vector, normalized_features, defaults_used = self._build_feature_vector(features)
-        prob_map = self._probabilities_from_model(vector)
+            # Ensure the map always contains the expected buckets
+            for bucket in BUCKET_TO_SCORE:
+                prob_map.setdefault(bucket, 0.0)
 
-        model_source = (
-            self.model_path.name if prob_map is not None and self.model_loaded else "dummy"
-        )
-        if prob_map is None:
-            prob_map = self._dummy_probabilities(normalized_features)
+            # Normalize probabilities
+            total = sum(prob_map.values())
+            if total > 0:
+                prob_map = {k: v / total for k, v in prob_map.items()}
 
-        # Ensure the map always contains the expected buckets.
-        for bucket in BUCKET_TO_SCORE:
-            prob_map.setdefault(bucket, 0.0)
-
-        total = sum(prob_map.values())
-        if total > 0:
-            prob_map = {k: v / total for k, v in prob_map.items()}
-
-        predicted_bucket = max(prob_map, key=prob_map.get)
-        confidence = prob_map.get(predicted_bucket, 0.0)
-        expected_score = sum(
-            BUCKET_TO_SCORE.get(cls, 75.0) * prob for cls, prob in prob_map.items()
-        )
+            # Calculate derived metrics
+            predicted_bucket = max(prob_map, key=prob_map.get)
+            confidence = prob_map.get(predicted_bucket, 0.0)
+            expected_score = sum(
+                BUCKET_TO_SCORE.get(cls, 75.0) * prob for cls, prob in prob_map.items()
+            )
 
         fair_yes_price = max(0.0, min(prob_map.get(2, confidence), 1.0))
         fair_no_price = round(1 - fair_yes_price, 4)
 
-        return {
-            "predicted_bucket": predicted_bucket,
-            "predicted_final_score": round(expected_score, 2),
-            "confidence": round(confidence, 4),
-            "probabilities": {str(k): round(v, 4) for k, v in prob_map.items()},
-            "fair_yes_price": round(fair_yes_price, 4),
-            "fair_no_price": fair_no_price,
-            "features": normalized_features,
-            "defaults_used": defaults_used,
-            "model_source": model_source,
-        }
+        return PredictionResult(
+            predicted_bucket=predicted_bucket,
+            predicted_final_score=round(expected_score, 2),
+            confidence=round(confidence, 4),
+            probabilities={str(k): round(v, 4) for k, v in prob_map.items()},
+            fair_yes_price=round(fair_yes_price, 4),
+            fair_no_price=fair_no_price,
+            features=normalized_features,
+            defaults_used=defaults_used,
+            model_source=self.predictor.source_name,
+        )
 
     def generate_signal_payload(
-        self, ticker: str, features: Dict[str, Any], market_snapshot: Dict[str, Any] | None
-    ) -> Dict[str, Any]:
+        self, ticker: str, features: Dict[str, Any], market_snapshot: MarketSummary | None
+    ) -> SignalResponse:
         prediction = self.predict(features)
-        market_snapshot = market_snapshot or {}
 
-        top_of_book = market_snapshot.get("top_of_book", {}) or {}
-        yes_top = top_of_book.get("yes", {}) or {}
-        yes_bid = yes_top.get("bid")
-        yes_ask = yes_top.get("ask")
+        yes_bid = market_snapshot.yes_bid if market_snapshot else None
+        yes_ask = market_snapshot.yes_ask if market_snapshot else None
 
         market_mid: float | None = None
         if yes_bid is not None and yes_ask is not None:
@@ -179,43 +167,46 @@ class PredictionEngine:
 
         delta_to_market: float | None = None
         if market_mid is not None:
-            delta_to_market = round(prediction["fair_yes_price"] - market_mid, 4)
+            delta_to_market = round(prediction.fair_yes_price - market_mid, 4)
 
-        return {
-            "ticker": ticker,
-            "predicted_final_score": prediction["predicted_final_score"],
-            "confidence": prediction["confidence"],
-            "fair_yes_price": prediction["fair_yes_price"],
-            "fair_no_price": prediction["fair_no_price"],
-            "delta_to_market": delta_to_market,
-            "probabilities": prediction["probabilities"],
-            "model_source": prediction["model_source"],
-            "rt_context": {
-                "features_used": prediction["features"],
-                "defaults_used": prediction["defaults_used"],
-                "predicted_bucket": prediction["predicted_bucket"],
-            },
-            "market_context": {
-                "top_of_book": top_of_book,
-                "orderbook": market_snapshot.get("orderbook", {}),
+        return SignalResponse(
+            ticker=ticker,
+            predicted_final_score=prediction.predicted_final_score,
+            confidence=prediction.confidence,
+            fair_yes_price=prediction.fair_yes_price,
+            fair_no_price=prediction.fair_no_price,
+            delta_to_market=delta_to_market,
+            probabilities=prediction.probabilities,
+            model_source=prediction.model_source,
+            rt_context=RTContext(
+                features_used=prediction.features,
+                defaults_used=prediction.defaults_used,
+                predicted_bucket=prediction.predicted_bucket,
+            ),
+            market_context={
                 "market_yes_mid_price": market_mid,
-                "market_summary": {
-                    "title": market_snapshot.get("title"),
-                    "status": market_snapshot.get("status"),
-                    "close_time": market_snapshot.get("close_time"),
-                    "series_ticker": market_snapshot.get("series_ticker"),
-                    "event_ticker": market_snapshot.get("event_ticker"),
-                    "volume": market_snapshot.get("volume"),
-                    "open_interest": market_snapshot.get("open_interest"),
-                    "yes_bid": market_snapshot.get("yes_bid"),
-                    "yes_ask": market_snapshot.get("yes_ask"),
-                    "no_bid": market_snapshot.get("no_bid"),
-                    "no_ask": market_snapshot.get("no_ask"),
-                },
+                "market_summary": market_snapshot.model_dump() if market_snapshot else {},
             },
-        }
+        )
 
 
-# Initialize at import so we can log if the model is missing.
-_default_model_path = Path(__file__).resolve().parent.parent / "prediction.model"
-prediction_engine = PredictionEngine(model_path=_default_model_path)
+# Default model path for dependency injection
+DEFAULT_MODEL_PATH = Path(__file__).resolve().parent.parent / "prediction.model"
+
+# Singleton instance - will be lazily initialized
+_engine_instance: PredictionEngine | None = None
+
+
+def get_prediction_engine(model_path: Path | str | None = None) -> PredictionEngine:
+    """
+    Get or create the singleton PredictionEngine instance.
+    Uses lazy initialization to avoid loading the model at import time.
+    """
+    global _engine_instance
+
+    if _engine_instance is None:
+        path = model_path or DEFAULT_MODEL_PATH
+        _engine_instance = PredictionEngine(model_path=path)
+        logger.info("Initialized PredictionEngine with model path: %s", path)
+
+    return _engine_instance
