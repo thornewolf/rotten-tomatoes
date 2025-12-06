@@ -13,10 +13,22 @@ The general structure of this project should have:
 6. a gemini integration for general ai stuff as needed
 7. a web interface that can be extended to do misc tasks / trigger all this stuff mentioned before
 
+## Required secret files (not in git)
+
+- `.env` at the repo root with the API keys and identifiers:
+  ```
+  GEMINI_API_KEY=your-gemini-key
+  KALSHI_API_KEY=your-kalshi-api-key
+  KALSHI_PRIVATE_KEY_PATH=tomato.key
+  KALSHI_KEY_ID=your-kalshi-key-id
+  ```
+  Ask Thorne for the real values; keep this file out of version control.
+- `tomato.key` (Kalshi private key) placed in the repo root. This is referenced by `KALSHI_PRIVATE_KEY_PATH` and stays local only.
+
 I am gonna attach some relevant code from other projects I have built:
 ```
   # kalshi_api.py
-  
+ 
 import os
 from typing import List, Dict, Any
 import logging
