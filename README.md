@@ -9,7 +9,7 @@ The general structure of this project will have:
 2. scraper scripts that grab Rotten Tomatoes web pages
 3. processor scripts that convert fetched web pages into tabular data for post-processing
 4. model script that trains on the tabular data and reports metrics
-5. a kalshi integration to fetch / search markets exposed as functions
+5. a Kalshi integration to fetch and search markets exposed as functions
 6. a gemini integration for general ai stuff as needed
 7. a web interface that can be extended to do misc tasks / trigger all this stuff mentioned before
 
