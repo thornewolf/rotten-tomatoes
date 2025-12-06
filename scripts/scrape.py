@@ -5,17 +5,17 @@ import requests
 logger = logging.getLogger(__name__)
 
 
-def scrape_kalshi_markets():
+def scrape_rotten_tomatoes():
     """
-    Skeleton to scrape specific HTML elements if API is insufficient.
+    Skeleton to scrape Rotten Tomatoes pages when API data is unavailable.
     """
-    logger.info("Starting scraper...")
+    logger.info("Starting Rotten Tomatoes scraper...")
     # Example placeholder:
-    # resp = requests.get("https://kalshi.com/markets/...")
+    # resp = requests.get("https://www.rottentomatoes.com/m/some_movie")
     # resp.raise_for_status()
-    # parse HTML to extract market details for backup data source.
+    # parse HTML to extract rating counts, audience scores, release info, etc.
     logger.info("Scrape completed (simulated).")
 
 
 if __name__ == "__main__":
-    scrape_kalshi_markets()
+    scrape_rotten_tomatoes()

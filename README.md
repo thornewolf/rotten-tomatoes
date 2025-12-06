@@ -6,7 +6,7 @@ We believe we can predict the rating at N days into the market given inputs (day
 The general structure of this project should have:
 
 1. notebooks with some standard ml libraries imported for doing random forest classification
-2. scraper scripts that grab kalshi wbe pages
+2. scraper scripts that grab Rotten Tomatoes web pages
 3. processor scripts that convert fetched web pages into tabular data for post-processing
 4. model script that trains on the tabular data and reports metrics
 5. a kalshi integration to fetch / search markets exposed as functions
