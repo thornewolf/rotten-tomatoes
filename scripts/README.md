@@ -21,6 +21,32 @@ All scripts should be run from the project root using absolute imports:
   - Model saved to `prediction_dummy.model`.
   - Metric: accuracy.
 
+## Model Comparison (XGBoost vs RandomForest)
+
+Compare different model architectures on the same dataset:
+
+```bash
+# Compare on dummy dataset (generates synthetic data)
+PYTHONPATH=. uv run python scripts/compare_models.py --dataset dummy --generate
+
+# Compare on tron dataset
+PYTHONPATH=. uv run python scripts/compare_models.py --dataset tron
+
+# Larger synthetic dataset for more robust comparison
+PYTHONPATH=. uv run python scripts/compare_models.py --dataset dummy --generate --dummy-rows 2000
+
+# List available datasets
+PYTHONPATH=. uv run python scripts/compare_models.py --list-datasets
+```
+
+The comparison script evaluates:
+- **MAE** (Mean Absolute Error) - lower is better
+- **RMSE** (Root Mean Squared Error) - lower is better
+- **R²** (coefficient of determination) - higher is better
+- **5-fold Cross-Validation MAE** - tests generalization
+
+It also reports feature importances for both models.
+
 ## Other Scripts
 
 - Search for markets:

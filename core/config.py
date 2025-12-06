@@ -1,4 +1,5 @@
 import logging
+import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -6,6 +7,44 @@ from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
+
+# Project root and configs directory
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CONFIGS_DIR = PROJECT_ROOT / "configs"
+
+
+def migrate_kalshi_key() -> None:
+    """
+    Check for kalshi.key in legacy locations and move to configs/ if found.
+
+    This runs at startup to auto-migrate keys from old locations.
+    """
+    legacy_locations = [
+        PROJECT_ROOT / "kalshi.key",  # Old root location
+    ]
+    target_path = CONFIGS_DIR / "kalshi.key"
+
+    # Don't migrate if target already exists
+    if target_path.exists():
+        return
+
+    for legacy_path in legacy_locations:
+        if legacy_path.exists() and legacy_path.is_file():
+            # Ensure configs directory exists
+            CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
+
+            try:
+                shutil.move(str(legacy_path), str(target_path))
+                logger.info(
+                    "Migrated kalshi.key from %s to %s",
+                    legacy_path, target_path
+                )
+                return
+            except (OSError, shutil.Error) as exc:
+                logger.warning(
+                    "Failed to migrate kalshi.key from %s: %s",
+                    legacy_path, exc
+                )
 
 
 class Settings(BaseSettings):
@@ -63,5 +102,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+
+# Run migration before loading settings
+migrate_kalshi_key()
 
 settings = Settings()

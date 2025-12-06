@@ -73,6 +73,12 @@ add dep:
 add-dev dep:
     uv add --dev {{dep}}
 
+# === Testing ===
+
+# Run all tests
+test:
+    uv run pytest
+
 # === Code Quality ===
 
 # Type check the codebase

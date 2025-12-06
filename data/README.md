@@ -73,12 +73,12 @@ days_since_release,current_rating,num_reviews,final_score
 
 ## Dataset Configuration
 
-Datasets are defined in `datasets.yaml` at the project root.
+Datasets are defined in `configs/datasets.yaml`.
 
 ### Adding a New Dataset
 
 1. **Add raw data** to `data/` directory
-2. **Define dataset** in `datasets.yaml`:
+2. **Define dataset** in `configs/datasets.yaml`:
 
 ```yaml
 datasets:
@@ -254,7 +254,7 @@ scraper.scrape("https://www.rottentomatoes.com/m/new_movie")
 
 ### Step 3: Configure Dataset
 
-Add to `datasets.yaml`:
+Add to `configs/datasets.yaml`:
 ```yaml
 datasets:
   new_movie:
@@ -329,7 +329,7 @@ The synthetic data generator (`scripts/generate_synthetic_data.py`) creates real
 
 ## Model Registry
 
-Models are configured in `models.yaml`:
+Models are configured in `configs/models.yaml`:
 
 ```yaml
 models:
@@ -368,7 +368,7 @@ Feature mismatch between training and inference. Ensure:
 
 ### "Unknown transformer"
 
-The transform name in `datasets.yaml` isn't registered. Built-in transforms:
+The transform name in `configs/datasets.yaml` isn't registered. Built-in transforms:
 - `review_prefix`: Convert reviews to prefix features
 
 ## API Reference
@@ -385,7 +385,7 @@ The transform name in `datasets.yaml` isn't registered. Built-in transforms:
 
 | File | Description |
 |------|-------------|
-| `datasets.yaml` | Dataset configurations |
+| `configs/datasets.yaml` | Dataset configurations |
 | `core/datasets.py` | Dataset management system |
 | `scripts/scrapers/base.py` | Scraper base class |
 | `scripts/train.py` | Training script |

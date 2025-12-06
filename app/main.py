@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
-TRACKED_MARKETS_FILE = PROJECT_ROOT / "data" / "tracked_markets.txt"
+TRACKED_MARKETS_FILE = PROJECT_ROOT / "configs" / "tracked_markets.txt"
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 

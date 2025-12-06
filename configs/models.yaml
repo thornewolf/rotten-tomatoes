@@ -1,0 +1,19 @@
+# Model Registry Configuration
+# Defines available prediction models and their metadata.
+
+models:
+  default:
+    path: ../models/prediction.model
+    description: Production model trained on combined dataset
+    is_default: true
+    model_type: auto
+
+  tron:
+    path: ../models/prediction_tron.model
+    description: Model trained on Tron movie dataset
+    model_type: auto
+
+  dummy:
+    path: ../models/prediction_dummy.model
+    description: Model trained on synthetic/dummy data for testing
+    model_type: auto

@@ -27,7 +27,7 @@ class PredictionEngine:
     Automatically falls back to DummyPredictor if ML model is unavailable.
     """
 
-    def __init__(self, model_path: Path | str = Path("prediction.model")):
+    def __init__(self, model_path: Path | str = Path("models/prediction.model")):
         self.model_path = Path(model_path)
         self.predictor: BasePredictor = self._initialize_predictor()
 
@@ -191,7 +191,7 @@ class PredictionEngine:
 
 
 # Default model path for dependency injection
-DEFAULT_MODEL_PATH = Path(__file__).resolve().parent.parent / "prediction.model"
+DEFAULT_MODEL_PATH = Path(__file__).resolve().parent.parent / "models" / "prediction.model"
 
 # Singleton instance - will be lazily initialized
 _engine_instance: PredictionEngine | None = None

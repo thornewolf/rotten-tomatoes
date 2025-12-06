@@ -13,18 +13,116 @@ The general structure of this project will have:
 6. a gemini integration for general ai stuff as needed
 7. a web interface that can be extended to do misc tasks / trigger all this stuff mentioned before
 
+---
+
+## Getting Help from an LLM
+
+**Recommended approach:** Copy the relevant context block below into your favorite LLM (Claude, GPT, etc.) along with your question. This gives the LLM the context it needs to help you effectively.
+
+### Web Development (FastAPI/UI)
+
+```
+I'm working on a Rotten Tomatoes prediction market project. The web interface uses:
+- FastAPI with Jinja2 templates in `app/`
+- HTMX for dynamic updates
+- Static files in `app/static/` (CSS, JS)
+- Templates in `app/templates/`
+- API routes in `app/api/`
+
+Key files:
+- `app/main.py` - FastAPI app setup and routes
+- `app/templates/` - Jinja2 HTML templates
+- `app/static/js/` - JavaScript files
+
+Run the dev server: `just dev` or `uv run uvicorn app.main:app --reload`
+```
+
+### Model Development (ML/Training)
+
+```
+I'm working on ML models for predicting Rotten Tomatoes scores. The system uses:
+- scikit-learn RandomForest and XGBoost regressors
+- 3 features: days_since_release, current_rating, num_reviews
+- Target: final_score (0-100)
+- Models saved as joblib pickles in `models/`
+
+Key files:
+- `scripts/train.py` - Training pipeline (RandomForest)
+- `scripts/compare_models.py` - Compare XGBoost vs RandomForest
+- `core/model_registry.py` - Model registration system
+- `configs/models.yaml` - Model configurations
+- `services/prediction_service.py` - Prediction engine
+
+Training: `PYTHONPATH=. uv run python scripts/train.py --dataset <name>`
+Compare models: `PYTHONPATH=. uv run python scripts/compare_models.py --dataset dummy --generate`
+```
+
+### Adding New Data
+
+```
+I'm adding training data for RT score prediction. The data system uses:
+- YAML-configured datasets in `configs/datasets.yaml`
+- DatasetLoader in `core/datasets.py`
+- Transformations for raw review data
+
+Required columns for processed data:
+- days_since_release (float): Days since movie release
+- current_rating (float): RT score at observation time (0-100)
+- num_reviews (int): Number of critic reviews at observation time
+- final_score (float): Final RT score to predict (0-100)
+
+For raw review data, use format "reviews" with transform "review_prefix".
+Place data files in `data/` and register in `configs/datasets.yaml`.
+```
+
+### Kalshi Integration (Trading/Markets)
+
+```
+I'm working on Kalshi prediction market integration. The system uses:
+- REST API client in `services/kalshi_client.py`
+- Authentication via PEM key (KALSHI_PEM_PATH in .env)
+- Market search in `scripts/search_market.py`
+
+Key files:
+- `services/kalshi_client.py` - API client
+- `core/security.py` - Auth/signing
+- `core/config.py` - Environment settings
+
+Search markets: `uv run python -m scripts.search_market --market TICKER`
+```
+
+### Prediction Service (Generating Signals)
+
+```
+I'm working on the prediction/signal generation system. It uses:
+- Strategy pattern with BasePredictor interface
+- MLPredictor loads trained models, DummyPredictor is fallback
+- PredictionEngine orchestrates predictions
+
+Key files:
+- `services/prediction_service.py` - Main prediction engine
+- `services/predictors/` - Predictor implementations (base, ml, dummy)
+
+The engine converts model outputs to probability buckets:
+- Bucket 0: <60 (low)
+- Bucket 1: 60-90 (mid)
+- Bucket 2: >90 (high)
+```
+
+---
+
 ## Required secret files (not in git)
 
 - `.env` at the repo root with the API keys and identifiers:
   ```
   GEMINI_API_KEY=your-gemini-key
   KALSHI_KEY_ID=your-kalshi-key-id
-  KALSHI_PEM_PATH=./kalshi.key           # alias: KALSHI_PRIVATE_KEY_PATH
+  KALSHI_PEM_PATH=./configs/kalshi.key   # alias: KALSHI_PRIVATE_KEY_PATH
   KALSHI_BASE_URL=https://demo-api.kalshi.co  # base host; code appends /trade-api/v2 if missing
   KALSHI_API_KEY=your-kalshi-api-key     # optional, kept for future use
   ```
   Ask Thorne for the real values; keep this file out of version control.
-- `kalshi.key` (Kalshi private key) placed in the repo root. This is referenced by `KALSHI_PEM_PATH`/`KALSHI_PRIVATE_KEY_PATH` and stays local only.
+- `kalshi.key` (Kalshi private key) placed in `configs/`. This is referenced by `KALSHI_PEM_PATH`/`KALSHI_PRIVATE_KEY_PATH` and stays local only. (If found in repo root, it will be auto-migrated to `configs/` on startup.)
 
 I am gonna attach some relevant code from other projects I have built:
 ```

@@ -13,7 +13,7 @@ import yaml
 logger = logging.getLogger(__name__)
 
 # Default path for model registry configuration
-DEFAULT_REGISTRY_PATH = Path(__file__).resolve().parent.parent / "models.yaml"
+DEFAULT_REGISTRY_PATH = Path(__file__).resolve().parent.parent / "configs" / "models.yaml"
 
 
 @dataclass
@@ -159,18 +159,18 @@ def create_default_registry(project_root: Path | None = None) -> ModelRegistry:
     default_models = [
         ModelConfig(
             name="default",
-            path=project_root / "prediction.model",
+            path=project_root / "models" / "prediction.model",
             description="Production model",
             is_default=True,
         ),
         ModelConfig(
             name="tron",
-            path=project_root / "prediction_tron.model",
+            path=project_root / "models" / "prediction_tron.model",
             description="Model trained on Tron dataset",
         ),
         ModelConfig(
             name="dummy",
-            path=project_root / "prediction_dummy.model",
+            path=project_root / "models" / "prediction_dummy.model",
             description="Model trained on synthetic data",
         ),
     ]

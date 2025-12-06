@@ -301,7 +301,7 @@ class DatasetLoader:
 
 
 # Default config path
-DEFAULT_DATASETS_PATH = Path(__file__).resolve().parent.parent / "datasets.yaml"
+DEFAULT_DATASETS_PATH = Path(__file__).resolve().parent.parent / "configs" / "datasets.yaml"
 
 # Global registry instance
 _registry_instance: Optional[DatasetRegistry] = None
