@@ -195,7 +195,7 @@ def load_review_history(
     csv_path: Path | str,
     release_date: date,
     date_format: str = "%d-%b",
-    year: int | None = None
+    year: int | None = None,
 ) -> pd.DataFrame:
     """
     Load review history CSV and add absolute dates.
@@ -233,6 +233,7 @@ def load_review_history(
 @dataclass
 class ReviewSnapshot:
     """Snapshot of review data at a point in time."""
+
     current_rating: float  # Percentage positive (0-100)
     num_reviews: int
     days_since_release: int
@@ -284,11 +285,7 @@ def compute_rating_at_time(
     )
 
 
-def kelly_bet_size(
-    prob_win: float,
-    odds: float,
-    kelly_fraction: float = 1.0
-) -> float:
+def kelly_bet_size(prob_win: float, odds: float, kelly_fraction: float = 1.0) -> float:
     """
     Calculate Kelly criterion bet size.
 
@@ -339,9 +336,7 @@ class Backtester:
         self.config = config or BacktestConfig()
 
     def _get_model_probability(
-        self,
-        threshold: int,
-        features: dict[str, float]
+        self, threshold: int, features: dict[str, float]
     ) -> float:
         """
         Get model's probability that final score will be above threshold.
@@ -375,7 +370,9 @@ class Backtester:
             # Above threshold includes buckets 0 (partial), 1, and 2
             # Estimate what fraction of bucket 0 is above threshold
             bucket_0_above = max(0, (60 - threshold) / 60)  # Linear approximation
-            prob_above = probs.get(0, 0) * bucket_0_above + probs.get(1, 0) + probs.get(2, 0)
+            prob_above = (
+                probs.get(0, 0) * bucket_0_above + probs.get(1, 0) + probs.get(2, 0)
+            )
         elif threshold < 90:
             # Above threshold includes bucket 1 (partial) and 2
             bucket_1_above = max(0, (90 - threshold) / 30)  # Bucket 1 spans 60-90
@@ -629,7 +626,9 @@ def run_backtest(
         predictor: BasePredictor = MLPredictor(Path(model_path))
     else:
         # Try to load default model
-        default_path = Path(__file__).parent.parent / "models" / "prediction_dummy.model"
+        default_path = (
+            Path(__file__).parent.parent / "models" / "prediction_dummy.model"
+        )
         if default_path.exists():
             predictor = MLPredictor(default_path)
         else:
@@ -710,5 +709,9 @@ if __name__ == "__main__":
                 f"@ {bet.market_price:.2f} -> {outcome_str} ${bet.pnl:.2f}"
             )
     else:
-        print("Usage: python backtest.py <movie_name> <review_csv> <price_csv> <release_date> [final_score]")
-        print("Example: python backtest.py 'Moana 2' reviews.csv prices.csv 2025-11-27 75.0")
+        print(
+            "Usage: python backtest.py <movie_name> <review_csv> <price_csv> <release_date> [final_score]"
+        )
+        print(
+            "Example: python backtest.py 'Moana 2' reviews.csv prices.csv 2025-11-27 75.0"
+        )
